@@ -4,7 +4,7 @@ YouTube 또는 로컬 영상에서 무슨 일이 언제 일어났는지 확인�
 
 ## 영상 분석 스킬을 직접 설치할 때
 
-세 도구에서 플러그인으로 설치하는 방법은 [저장소 안내](../../README.md)에 있습니다.
+세 도구에서 플러그인으로 설치하는 방법은 [플러그인 사용법](../README.md#플러그인으로-설치할-때)에 있습니다.
 아래 절차는 저장소 루트의 `install.py`로 영상 분석 스킬만 복사하는 방법입니다.
 
 Python 3.9 이상으로 실행합니다. 기본값은 Codex, Claude Code, Google Antigravity 세 곳입니다. 필요한 도구만 고르려면 `--agent codex`, `--agent claude`, `--agent antigravity`를 지정합니다.
