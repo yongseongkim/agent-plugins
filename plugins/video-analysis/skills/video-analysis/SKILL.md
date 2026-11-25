@@ -1,46 +1,46 @@
 ---
 name: video-analysis
-description: YouTube 영상이나 로컬 동영상의 내용을 구간별로 파악하고, 자막·발화·화면을 대조해 질문에 답하거나 다른 작업에서 재사용할 시간별 근거를 만든다. 전체 분석, 특정 장면 확인, 기존 수집 자료 재분석에 사용한다.
+description: Analyze YouTube or local videos with captions, speech, and frames. Use for summaries, scene questions, or timestamped evidence that another task can reuse.
 ---
 
-# 영상 분석
+# Video analysis
 
-사용자가 알고 싶은 내용을 분석 질문으로 삼는다. 전체 요약을 원하면 영상 전반을 다루고, 특정 장면에 대한 질문이면 해당 구간과 해석에 필요한 앞뒤 맥락을 다룬다. 다른 스킬이 호출하면 그 스킬이 지정한 목적, 출력 형식과 원본 보관 방식을 따른다.
+Use the user's question to set the scope. Cover the whole video for a summary, or the relevant scene and its context for a specific question. Follow the caller's output format and retention policy. Answer in the user's language and preserve source wording.
 
-## 1. 이미 수집한 자료부터 확인한다
+## Build the timeline
 
-영상 ID와 버전을 확인하고 같은 영상의 원본, 메타데이터, 자막, 음성 전사, OCR, 검토 결과를 재사용한다. 목적이 달라져도 같은 근거를 다시 수집할 필요는 없다. 영상별로 작업 폴더를 구분한다. 원본이나 트랙이 필요하면 [자료 수집 방법](references/collection.md)을 따른다.
-
-## 2. 전체 내용을 시간순으로 나눈다
-
-자막, Whisper 전사, OCR을 각각 독립적으로 시도하고 원문을 보존한다. 기존 자료의 `evidence_timeline.json`이 현재 입력과 일치하면 그대로 읽는다. 아래 예시의 `SKILL`은 현재 읽은 `SKILL.md`가 들어 있는 디렉터리의 절대 경로이고, `RUN`은 호출자가 선택한 영상별 작업 디렉터리의 절대 경로다. 결과물은 작업 디렉터리에 쓴다.
+Reuse media, metadata, tracks, and reviews for the same video ID and version. Attempt captions, Whisper, and OCR independently and keep the originals. For missing inputs, see [collection](references/collection.md). Reuse `evidence_timeline.json` when its input fingerprint is current. To rebuild it, set `SKILL` to this skill's absolute path and `RUN` to the video's working directory.
 
 ```sh
 python3 "$SKILL/scripts/video_evidence.py" "$RUN" --video-id "$VIDEO_ID"
 ```
 
-타임라인의 `events`에는 원본 초 단위 시각, 텍스트, 출처가 있다. `sources`에서 누락, 오류, 내용 없음, 중복을 확인한다. 메타데이터와 질문에 관련된 작성자 설명·댓글은 별도 근거로 읽는다. 댓글 게시일과 장면 시각을 구분한다. 답글에서 이름을 말하고 원래 질문이 시각을 가리키면 양쪽 원문과 링크를 함께 인용한다. 설명란에서만 확인한 사실은 장면 시각을 비워 둔다. 시간 0은 영상 시작에서 실제로 확인한 근거에 쓴다.
+Read the source, text, and playback time of each event. Check `sources` for missing, empty, failed, or duplicate tracks. Compare the last text event (`durationSeconds`) with the media duration and check gaps for silent action.
 
-주제나 행동이 바뀌는 지점에서 구간을 나눈다. 각 구간에 무슨 일이 있었는지, 어느 자료가 뒷받침하는지, 화면에서 더 확인할 질문이 있는지 적는다. 챕터는 탐색 단서다. 실제 장면이 확인되면 그 시각을 기록한다. 타임라인의 `durationSeconds`는 마지막 텍스트 근거의 끝이므로 원본 재생 시간과 대조해 시작·끝·내부 공백도 살핀다. 음성·글자가 없는 구간에서도 시연이나 장면 전환이 있을 수 있다.
+## Interpret scenes
 
-## 3. 화면이 답할 수 있는 질문을 직접 확인한다
+Use the title, description, and chapters for context. Split on changes in topic or action. For each section, identify what happened, cite the evidence, and note what still needs a visual check.
 
-숫자·기호가 충돌하거나, 말로 설명하지 않은 변화가 있거나, 텍스트가 비어 있으면 그 구간을 확인한다. 질문, 확인할 원본 시각, 이미 확보한 근거를 먼저 적는다. 시각 단서가 없으면 챕터나 일정 간격의 대표 화면으로 범위를 좁힌다. 컷이 거의 없는 화면 녹화는 설정 창이나 그래프 일부만 바뀌기도 한다.
+- Check unfamiliar names in Whisper against nearby speech, captions, and on-screen text. When a creator's reply names something in a timestamped viewer question, cite both texts and links. Use `null` for an unknown scene time, including description-only mentions. Comment posting dates are separate from playback time. Reserve zero for evidence at the start.
+- Compare OCR `boundingBox` values across frames. Changing text in a stable area that follows speech suggests embedded captions. Reassess when the layout changes. Captions repeating speech can confirm the wording but count as one claim.
+- Match the evidence to the claim. A shop sign establishes visibility. A visit or recommendation needs supporting action, speech, or creator commentary.
+
+## Inspect frames when the answer depends on the image
+
+If the tracks answer the question, cite them. For ambiguous text, conflicting numbers, or unspoken action, name the question and choose the relevant times. Use chapters or spaced samples when the time is unknown. Reuse full frames when available. To extract more, pass their playback times to the helper.
 
 ```sh
 python3 "$SKILL/scripts/inspect_frames.py" "$VIDEO" --at 378 380 382 \
-  --question '표시된 값은 무엇이며 어느 시점에 바뀌는가?' --out "$RUN/visual"
+  --question 'Which value changes, and when?' --out "$RUN/visual"
 ```
 
-출력된 `frames.json` 옆의 JPEG를 이미지 보기 도구로 실제로 연다. 먼저 전후 화면 몇 장을 비교하고, 작은 글씨는 원본 해상도에서 해당 영역을 확대한다. 출력에는 요청 시각과 추출한 프레임의 실제 시각이 따로 있다. 급격한 변화가 보이면 그 사이를 촘촘히 다시 본다. 관찰한 글자·형태·변화, 발언을 통해 추론한 의미, 판독이 어려운 부분을 구분한다. 수치에는 소수점·부호·단위를 보존한다. 원본을 볼 수 없으면 이미지 검토를 미확인으로 표시한다.
+Open the images with an image viewer. Compare adjacent frames for motion, sample closer around fast changes, and zoom at source resolution for small labels. Even a static shot can contain a UI change. Cite the actual frame time from `frames.json` and preserve signs, decimals, and units. Distinguish what you saw from what you inferred. Mark anything unreadable or unavailable as unverified.
 
-## 4. 근거와 답을 넘긴다
+## Return evidence
 
-대화형 질문은 결론과 해당 장면의 시간을 바로 답한다. 재사용할 분석 또는 다른 스킬에 넘길 때는 `analysis.json`을 목적별 출력 폴더에 쓴다. 같은 영상의 여러 분석이 하나의 근거 타임라인을 참조할 수 있다.
+For a direct question, give the answer and a timestamped video link when available. For reuse, write `analysis.json` in a purpose-specific directory. Each analysis references the shared timeline.
 
-- `videoId`, `purpose`, `timelineFingerprint`(타임라인의 `inputFingerprint`), `coverage`(분석 범위, 자료별 상태, 빠진 구간)를 적는다.
-- `sections[]`에 `startSeconds`, `endSeconds`, `summary`, `evidence`를 둔다. 근거는 출처 파일과 이벤트 번호, 댓글 링크 또는 실제 프레임 시각처럼 다시 찾을 수 있는 참조를 포함한다. 시각 미상은 `null`이다.
-- `visualChecks[]`에는 질문, 원본 시각, 실제로 본 화면의 관찰 내용과 미해결 사항을 둔다. 자료를 지우는 작업에서는 원본 영상 링크와 시각으로 다시 찾을 수 있게 한다.
-- `findings[]`에는 질문에 대한 결론과 해당 구간의 근거를 담는다. 사용자에게는 가능한 경우 그 장면부터 여는 YouTube 링크를 제공한다.
-
-호출한 작업이 정한 별도 검토·저장 단계는 그 작업이 담당한다.
+- Include `videoId`, `purpose`, `timelineFingerprint` (the timeline's `inputFingerprint`), and `coverage` (scope, track status, gaps).
+- Each entry in `sections[]` carries `startSeconds`, `endSeconds`, `summary`, and `evidence`. Cite a file and event index, a comment link, or an actual frame time.
+- In `visualChecks[]`, record the question, source time, observations, and unresolved details. Keep the original video link and time if the caller discards local media.
+- Use `findings[]` for conclusions and their evidence. Identify the action or statement supporting each inference. Leave downstream review and storage to the caller.

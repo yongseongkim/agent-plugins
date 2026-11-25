@@ -28,6 +28,7 @@ SOURCE_FILES = {
     "ocr": ("onscreen_text.json", "ocr.jsonl"),
 }
 SOURCE_ORDER = {"transcript": 0, "whisper": 1, "ocr": 2}
+BOX_FIELDS = ("x", "y", "width", "height")
 
 
 def read_json(path):
@@ -62,7 +63,12 @@ def read_track(path):
                     continue
                 frame = json.loads(line)
                 for row in frame["lines"]:
-                    segments.append({"start": frame["time"], "text": row["text"], "confidence": row.get("confidence")})
+                    segments.append({
+                        "start": frame["time"],
+                        "text": row["text"],
+                        "confidence": row.get("confidence"),
+                        "boundingBox": {key: row[key] for key in BOX_FIELDS if key in row},
+                    })
     return {"segments": segments}
 
 
@@ -150,7 +156,21 @@ def selected_source(run_dir, candidates):
     return None
 
 
-def normalized_segments(video):
+def normalized_ocr_box(box):
+    if not isinstance(box, dict):
+        return None
+    values = [box.get(key) for key in BOX_FIELDS]
+    # Vision can return a coordinate a fraction of a pixel outside the frame.
+    if not all(type(v) in (int, float) and -1e-6 <= v <= 1 + 1e-6 for v in values):
+        return None
+    x, y, width, height = values
+    left, top, right, bottom = (round(v, 6) for v in (x, y, x + width, y + height))
+    if 0 <= left < right <= 1 and 0 <= top < bottom <= 1:
+        return {"x": left, "y": top, "width": round(right - left, 6), "height": round(bottom - top, 6)}
+    return None
+
+
+def normalized_segments(video, source=None):
     segments = []
     for segment in video.get("segments", []):
         text = str(segment.get("text") or "").strip()
@@ -166,6 +186,10 @@ def normalized_segments(video):
         }
         if segment.get("confidence") is not None:
             event["confidence"] = float(segment["confidence"])
+        if source == "ocr":
+            box = normalized_ocr_box(segment.get("boundingBox"))
+            if box is not None:
+                event["boundingBox"] = box
         segments.append(event)
     return segments
 
@@ -191,7 +215,7 @@ def build_timeline(run_dir, video_id):
             value = read_track(path)
             video = unwrap_video(value, video_id)
             error = video.get("error") or (value.get("error") if isinstance(value, dict) else None)
-            segments = normalized_segments(video) if not error else []
+            segments = normalized_segments(video, source) if not error else []
         except (ValueError, TypeError, KeyError, IndexError) as exc:
             error = f"Invalid track: {exc}"
         if error:
