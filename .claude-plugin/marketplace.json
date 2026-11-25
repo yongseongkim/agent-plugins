@@ -1,0 +1,11 @@
+{
+  "name": "yongseong-plugins",
+  "owner": { "name": "yongseongkim" },
+  "metadata": {
+    "description": "한국어 개발 문서 교정과 영상 분석에 필요한 개인 플러그인을 모았습니다."
+  },
+  "plugins": [
+    { "name": "korean-dev-prose", "source": "./plugins/korean-dev-prose" },
+    { "name": "video-analysis", "source": "./plugins/video-analysis" }
+  ]
+}
