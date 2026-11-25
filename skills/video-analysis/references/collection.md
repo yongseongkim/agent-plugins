@@ -27,7 +27,7 @@ uv run --with mlx-whisper python "$SKILL/scripts/transcribe.py" "$VIDEO" "$RUN/a
 
 다른 환경에서도 로컬 Whisper의 `segments[].start/end/text` JSON을 `asr.json`으로 사용할 수 있다. 음성이 없거나 도구를 실행할 수 없으면 그 상태를 결과에 기록한다.
 
-macOS의 전체 화면 OCR 예시는 다음과 같다. 영상 시작부터 **새로운 빈 프레임 폴더**에 같은 간격으로 뽑아야 파일 번호와 표본 시각이 맞는다. 아래 OCR은 정규 간격 표본 전용이다. 잘라낸 영상이나 임의의 시각을 골라 추출한 프레임에는 `inspect_frames.py`의 원본 시각을 사용한다.
+macOS의 전체 화면 OCR 예시는 다음과 같다. 영상 시작부터 새로운 빈 프레임 폴더에 같은 간격으로 뽑아야 파일 번호와 표본 시각이 맞는다. 아래 OCR은 정규 간격 표본 전용이다. 잘라낸 영상이나 임의의 시각을 골라 추출한 프레임에는 `inspect_frames.py`의 원본 시각을 사용한다.
 
 ```sh
 mkdir -p "$RUN/ocr-frames"
