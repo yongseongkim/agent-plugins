@@ -8,6 +8,18 @@ Codex, Claude Code, Antigravity CLI에서 쓸 수 있는 플러그인을 모았�
 | `korean-dev-prose` | 한국어 주석과 개발 문서를 다듬으면서 코드에 드러나지 않는 이유를 보존할 때 | [edit-korean-dev-prose](plugins/korean-dev-prose/skills/edit-korean-dev-prose/SKILL.md) |
 | `video-analysis` | YouTube나 로컬 영상에서 어떤 일이 언제 일어났는지 자막·음성·화면으로 확인할 때 | [video-analysis](plugins/video-analysis/skills/video-analysis/SKILL.md) · [실행 환경](plugins/video-analysis/README.md#실행-환경) |
 
+## 시스템 구성
+
+영상 분석처럼 스크립트가 필요한 스킬은 지침 옆의 `scripts/` 폴더에 실행 파일을 함께 둡니다.
+
+```mermaid
+flowchart LR
+    codex["Codex"] -->|".agents/plugins/marketplace.json에서 선택"| plugin["plugins/ 아래의 플러그인"]
+    claude["Claude Code"] -->|".claude-plugin/marketplace.json에서 선택"| plugin
+    agy["Antigravity CLI"] -->|"로컬 폴더를 직접 지정"| plugin
+    plugin -->|"스킬 지침을 제공"| skill["skills/…/SKILL.md"]
+```
+
 ## 한 번만 참조할 때
 
 예를 들어 주석 한 줄을 고치려면 에이전트에 위 표의 교정 스킬 링크와 원문을 건네고 “이 지침에 맞게 주석을 다듬어줘”라고 요청합니다.
