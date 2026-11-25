@@ -1,10 +1,10 @@
-# 자료 수집
+# Collect video evidence
 
-원본과 증거 파일의 위치는 호출한 작업이 정한다. 아래 예에서는 한 영상만 담긴 작업 폴더를 `RUN`, 스킬 폴더를 `SKILL`, 실제 영상 경로를 `VIDEO`로 둔다. 기존 자료가 있으면 해당 단계에서 바로 시작한다.
+Use the caller's media and retention settings. `RUN` is the directory for one video, `SKILL` is the skill directory, and `VIDEO` is the original media path. Start with the inputs already available.
 
-## 원본, 자막, 메타데이터
+## Media, captions, and metadata
 
-YouTube URL이면 사용 가능한 원어 자막부터 확인한다. 아래 예시의 `ko`를 실제 자막 언어로 바꾼다. 업로더 자막과 자동 생성 자막의 출처를 기록하고 둘 다 보존해야 하는 작업은 각각 별도 출력 경로로 받는다.
+List captions and replace `ko` with the source language. Record whether the track is uploader-provided or auto-generated. To keep both for one language, download them separately to different paths.
 
 ```sh
 yt-dlp --no-playlist --list-subs -- "$URL"
@@ -13,21 +13,19 @@ yt-dlp --no-playlist --write-info-json --write-subs --write-auto-subs \
   -o "$RUN/source/%(id)s.%(ext)s" --print after_move:filepath -- "$URL"
 ```
 
-출력된 원본 경로를 `VIDEO`로 사용한다. 원본 `.info.json`을 `RUN/metadata.json`에, 사용할 트랙을 `RUN/captions.vtt`에 복사하거나 연결한다. 설명란과 챕터는 메타데이터에서 읽는다. 로컬 영상은 원본 파일을 사용하며 안정적인 ID를 지정한다. 접근 제한이나 실패 원인을 기록한다. 외부 전사 서비스는 따로 선택한 경우에만 사용한다.
+Use the printed path for `VIDEO`. Copy or link the original `.info.json` to `$RUN/metadata.json` and the selected track to `$RUN/captions.vtt`. Read the description and chapters from metadata. For local files, assign a stable video ID. Record access failures. Use external transcription only when selected by the caller.
 
-## 로컬 음성 전사와 OCR
+## Speech and on-screen text
 
-Apple Silicon에서 단어 시각이 필요한 경우 기존 MLX Whisper 환경을 사용한다. `--language ko`는 발화 언어에 맞춘다.
+On Apple Silicon, use local MLX Whisper for word timestamps. Set the language to match the speech.
 
 ```sh
 uv run --with mlx-whisper python "$SKILL/scripts/transcribe.py" "$VIDEO" "$RUN/asr.json" --language ko
 ```
 
-오디오 스트림 여부는 `ffprobe -v error -select_streams a -show_entries stream=index "$VIDEO"`로 확인할 수 있다. 음성 트랙이 없는 영상의 자막은 자막 근거로만 인용한다.
+Other Whisper implementations can supply `asr.json` with `start`, `end`, and `text` on each segment. Check for audio with `ffprobe -v error -select_streams a -show_entries stream=index "$VIDEO"`. Record missing audio or unavailable tools. Attribute captions from silent media to the caption track.
 
-다른 환경에서도 로컬 Whisper의 `segments[].start/end/text` JSON을 `asr.json`으로 사용할 수 있다. 음성이 없거나 도구를 실행할 수 없으면 그 상태를 결과에 기록한다.
-
-macOS의 전체 화면 OCR 예시는 다음과 같다. 영상 시작부터 새로운 빈 프레임 폴더에 같은 간격으로 뽑아야 파일 번호와 표본 시각이 맞는다. 아래 OCR은 정규 간격 표본 전용이다. 잘라낸 영상이나 임의의 시각을 골라 추출한 프레임에는 `inspect_frames.py`의 원본 시각을 사용한다.
+For macOS Vision OCR, sample the original from time zero into a fresh empty frame directory. Match the sampling rate in both commands so file numbers map to playback time. Choose recognition languages for the on-screen writing.
 
 ```sh
 mkdir -p "$RUN/ocr-frames"
@@ -35,21 +33,18 @@ ffmpeg -nostdin -n -i "$VIDEO" -vf fps=1:start_time=0:round=up -q:v 3 "$RUN/ocr-
 swift "$SKILL/scripts/ocr.swift" "$RUN/ocr-frames" 1 "$RUN/ocr.jsonl" ko-KR,en-US
 ```
 
-Vision이 실행 오류로 종료되면 글자가 없다는 뜻으로 해석하지 않는다. 실패 상태를 기록하고, 필요한 구간은 원본 프레임을 직접 열어 확인한다.
+For clips or irregular samples use the original frame times from `inspect_frames.py`. If Vision fails, record the failure and inspect the relevant frames directly. A successful scan may also return no text.
 
-다른 환경에서는 기존 OCR로 `{"time":12.0,"lines":[{"text":"표시값","confidence":0.92}]}` 형식의 JSONL 또는 아래 구간 JSON을 쓴다. 촬영지 언어와 화면 자막 언어가 다르면 필요한 영역과 언어를 따로 확인한다. 화면 글자를 발화로 옮기지 않는다.
+Other OCR tools can supply JSONL such as `{"time":12.0,"lines":[{"text":"OPEN","confidence":0.92}]}`. Each Vision line also has `x`, `y`, `width`, and `height`, normalized to 0–1 from the top left of the original frame. Timeline OCR events expose these as `boundingBox`. Segment JSON accepts the same box at `segments[].boundingBox`. Text and timing remain usable with missing or invalid coordinates. Check regions separately when signs and captions use different languages. Attribute on-screen writing to OCR.
 
-Vision JSONL은 각 줄에 `x`, `y`, `width`, `height`를 기록한다. 원점은 원본 화면의 왼쪽 위이고 좌표와 크기는 0~1 비율이다.
-타임라인의 OCR 이벤트는 이 값을 `boundingBox`에 담는다. 다른 OCR의 구간 JSON도 같은 좌표계로 변환한 값을 `segments[].boundingBox`로 넘길 수 있다. 좌표가 없거나 유효하지 않은 줄은 글자와 시각만으로도 분석할 수 있다.
+## Existing inputs
 
-## 기존 수집 자료
+The timeline builder selects the first available file in each row and preserves the originals.
 
-타임라인 도구는 영상별 디렉터리에서 다음 순서로 입력을 선택한다. 원본은 수정하지 않는다.
-
-| 트랙 | 인식하는 파일 |
+| Track | Input files in order |
 |---|---|
-| 자막 또는 검토된 기본 전사 | `transcripts.reviewed.json`, `transcripts.json`, `captions.json`, `captions.vtt` |
-| 음성 전사 | `audio_transcript.json`, `asr.json` |
-| 화면 글자 | `onscreen_text.json`, `ocr.jsonl` |
+| Captions or reviewed primary transcript | `transcripts.reviewed.json`, `transcripts.json`, `captions.json`, `captions.vtt` |
+| Speech | `audio_transcript.json`, `asr.json` |
+| OCR | `onscreen_text.json`, `ocr.jsonl` |
 
-구간 JSON은 `segments[]`에 `start`, `end` 또는 `duration`, `text`를 담는다. 분리된 프레임 한 장의 OCR은 시작 시각만 있어도 된다. `videos[]`에 여러 결과가 있으면 해당 영상 ID의 자료만 쓴다. `{"videoId":"…","error":"…"}` 형태의 수집 실패도 보존한다. 원본과 시각이 같은 자료만 합치고 동일 구간이 복제된 트랙은 독립적인 증거 수에서 제외한다.
+Segment JSON uses `segments[]` with `start`, `end` or `duration`, and `text`. A sampled OCR frame needs only a start time. For `videos[]`, select the matching video ID. Preserve collection errors such as `{"videoId":"…","error":"…"}`. Combine evidence only on the same source timeline and count duplicated tracks once.
