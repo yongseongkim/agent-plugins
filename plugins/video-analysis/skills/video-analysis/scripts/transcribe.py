@@ -20,8 +20,8 @@ def main():
         task="transcribe", word_timestamps=True, condition_on_previous_text=False,
         verbose=None,
     )
-    if not result["segments"]:
-        raise ValueError("No speech segments returned. Check audio and language.")
+    if not isinstance(result.get("segments"), list):
+        raise ValueError("Expected a list of speech segments")
     result.update(model=args.model, engine="mlx-whisper", engine_version=version("mlx-whisper"))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     write_json(args.output, result)
