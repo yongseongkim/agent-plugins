@@ -1,6 +1,6 @@
 {
   "name": "video-analysis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "자막, 음성 전사와 화면을 같은 시간축에서 대조해 영상에 관한 질문에 답합니다.",
   "author": { "name": "yongseongkim" }
 }

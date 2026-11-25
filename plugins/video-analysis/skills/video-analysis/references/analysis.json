@@ -1,0 +1,33 @@
+{
+  "videoId": "example",
+  "purpose": "Check whether the edited title survives a refresh",
+  "timelineFingerprint": "<inputFingerprint from evidence_timeline.json>",
+  "coverage": {
+    "scope": "Title edit and refresh, 10–14 seconds",
+    "tracks": {"transcript": "ready", "whisper": "missing", "ocr": "ready"},
+    "gaps": []
+  },
+  "sections": [
+    {
+      "startSeconds": 10,
+      "endSeconds": 14,
+      "summary": "The demo shows a refresh followed by the edited title.",
+      "evidence": [{"file": "evidence_timeline.json", "eventIndex": 7}]
+    }
+  ],
+  "visualChecks": [
+    {
+      "question": "Which title is visible after the refresh?",
+      "timeSeconds": 14,
+      "observation": "The edited title is visible.",
+      "unresolved": [],
+      "evidence": [{"file": "visual/inspection-example/frames.json", "timeSeconds": 14}]
+    }
+  ],
+  "findings": [
+    {
+      "conclusion": "The edited title is visible after the demonstrated refresh.",
+      "evidence": [{"file": "visual/inspection-example/frames.json", "timeSeconds": 14}]
+    }
+  ]
+}

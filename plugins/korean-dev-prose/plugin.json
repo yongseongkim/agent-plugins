@@ -1,6 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "korean-dev-prose",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "author": { "name": "yongseongkim" },
   "description": "코드 주석과 한국어 개발 문서를 다듬고, 코드에 드러나지 않는 업무상의 이유를 보존합니다."
 }

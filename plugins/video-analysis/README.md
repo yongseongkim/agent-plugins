@@ -20,4 +20,8 @@ YouTube 영상은 근거가 된 장면부터 열리는 링크를, 로컬 파일�
 이 파일에는 자막·음성 전사·OCR에서 읽은 글과 각각의 출처, 재생 시각이 들어 있습니다.
 에이전트는 질문별 결론과 직접 확인한 장면, 확인하지 못한 점을 작업별 `analysis.json`에 기록합니다.
 
-[플러그인 설치](../README.md#플러그인으로-설치할-때) · [영상 분석 스킬 단독 설치](../README.md#영상-분석-스킬만-설치할-때)
+YouTube 자료 수집에는 yt-dlp, 원본 프레임 추출에는 FFmpeg를 씁니다.
+음성을 로컬에서 직접 전사하는 예시는 Apple Silicon의 MLX Whisper를, 화면 글자를 읽는 예시는 macOS의 Vision을 사용합니다.
+이미 수집한 자막·전사·OCR은 Python 표준 라이브러리만으로 한 타임라인에 모을 수 있습니다.
+
+[플러그인 설치](https://github.com/yongseongkim/agent-plugins/blob/main/plugins/README.md#플러그인으로-설치할-때) · [영상 분석 스킬 단독 설치](https://github.com/yongseongkim/agent-plugins/blob/main/plugins/README.md#영상-분석-스킬만-설치할-때)

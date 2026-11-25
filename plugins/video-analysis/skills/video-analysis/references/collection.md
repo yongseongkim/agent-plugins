@@ -2,6 +2,8 @@
 
 Use the caller's media and retention settings. `RUN` is the directory for one video, `SKILL` is the skill directory, and `VIDEO` is the original media path. Start with the inputs already available.
 
+For an ad-hoc run with no output directory, create a private temporary directory with `RUN=$(mktemp -d "${TMPDIR:-/tmp}/video-analysis.XXXXXXXX")`. Tell the caller where retained results are. Choose a persistent directory when they ask to reuse them later.
+
 ## Media, captions, and metadata
 
 List captions and replace `ko` with the source language. Record whether the track is uploader-provided or auto-generated. To keep both for one language, download them separately to different paths.
@@ -15,6 +17,15 @@ yt-dlp --no-playlist --write-info-json --write-subs --write-auto-subs \
 
 Use the printed path for `VIDEO`. Copy or link the original `.info.json` to `$RUN/metadata.json` and the selected track to `$RUN/captions.vtt`. Read the description and chapters from metadata. For local files, assign a stable video ID. Record access failures. Use external transcription only when selected by the caller.
 
+When a viewer's question or a creator's reply is evidence, check for comments in existing metadata first. This command saves a separate copy with comments.
+
+```sh
+yt-dlp --no-playlist --skip-download --write-info-json --write-comments \
+  -o "$RUN/comments/%(id)s.%(ext)s" -- "$URL"
+```
+
+Match replies to their parent comment and verify the author's channel against the uploader before attributing a reply to the creator.
+
 ## Speech and on-screen text
 
 On Apple Silicon, use local MLX Whisper for word timestamps. Set the language to match the speech.
@@ -25,7 +36,7 @@ uv run --with mlx-whisper python "$SKILL/scripts/transcribe.py" "$VIDEO" "$RUN/a
 
 Other Whisper implementations can supply `asr.json` with `start`, `end`, and `text` on each segment. Check for audio with `ffprobe -v error -select_streams a -show_entries stream=index "$VIDEO"`. Record missing audio or unavailable tools. Attribute captions from silent media to the caption track.
 
-For macOS Vision OCR, sample the original from time zero into a fresh empty frame directory. Match the sampling rate in both commands so file numbers map to playback time. Choose recognition languages for the on-screen writing.
+For macOS Vision OCR, sample the original from time zero into a fresh empty frame directory. The example uses one frame per second. For a long recording, use a coarser rate for an overview and inspect short changes around candidate times. Match the sampling rate in both commands so file numbers map to playback time. Choose recognition languages for the on-screen writing.
 
 ```sh
 mkdir -p "$RUN/ocr-frames"
@@ -51,3 +62,10 @@ If that file cannot be parsed, the track reports an error in `sources`. Check th
 | OCR | `onscreen_text.json`, `ocr.jsonl` |
 
 Segment JSON uses `segments[]` with `start`, `end` or `duration`, and `text`. A sampled OCR frame needs only a start time. For `videos[]`, select the matching video ID. Preserve collection errors such as `{"videoId":"…","error":"…"}`. Combine evidence only on the same source timeline and count duplicated tracks once.
+
+To inspect part of a long timeline, filter by playback time and keep each event's original zero-based index for citations. This example includes captions already in progress at 120 seconds.
+
+```sh
+jq -c '.events | to_entries[] | select(.value.endSeconds >= 120 and .value.startSeconds < 150)
+  | {eventIndex: .key} + .value' "$RUN/evidence_timeline.json"
+```

@@ -36,6 +36,7 @@ agy plugin install ./plugins/korean-dev-prose
 
 ## 영상 분석 스킬만 설치할 때
 
+기존 경로인 `skills/video-analysis`는 [현재 스킬 폴더](video-analysis/skills/video-analysis/)를 가리키는 심볼릭 링크입니다.
 이 저장소의 루트에서 Python 3.9 이상으로 실행합니다.
 여러 프로젝트에서 쓸 때는 사용자 계정에 설치합니다.
 
@@ -75,3 +76,4 @@ python3 install.py --project /path/to/project
 4. `agy plugin validate --strict ./plugins/<플러그인 이름>`과 `claude plugin validate .claude-plugin/marketplace.json`으로 구성을 확인합니다.
 5. `python3 -m unittest discover -s tests -v`로 플러그인 목록, 스킬 설치, 영상 분석을 검증합니다.
    FFmpeg가 있으면 추출한 프레임의 재생 시각도 검사합니다.
+   스킬의 YAML 메타데이터까지 검사하려면 PyYAML이 있는 환경에서 실행하거나 `uv run --with PyYAML python -m unittest discover -s tests -v`를 씁니다.

@@ -29,6 +29,12 @@ SOURCE_FILES = {
 }
 SOURCE_ORDER = {"transcript": 0, "whisper": 1, "ocr": 2}
 BOX_FIELDS = ("x", "y", "width", "height")
+VTT_MARKUP = re.compile(
+    r"</(?:c|i|b|u|v|lang|ruby|rt)>"
+    r"|<(?:c|i|b|u|ruby|rt)(?:\.[^\s.<>]+)*>"
+    r"|<(?:v|lang)(?:\.[^\s.<>]+)*(?:[ \t]+[^<>]*)?>"
+    r"|<(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}>"
+)
 
 
 def read_json(path):
@@ -53,7 +59,7 @@ def read_track(path):
             for index, line in enumerate(lines):
                 if " --> " in line:
                     start, end = line.split(" --> ", 1)
-                    cue = html.unescape(re.sub(r"<[^>]*>", "", " ".join(lines[index + 1:])))
+                    cue = html.unescape(VTT_MARKUP.sub("", " ".join(lines[index + 1:])))
                     segments.append({"start": seconds(start.strip()), "end": seconds(end.split()[0]), "text": cue})
                     break
     else:
@@ -94,12 +100,14 @@ def sha256_file(path):
 
 def unwrap_video(value, video_id=None):
     if not isinstance(value, dict):
-        return {}
+        raise ValueError("Expected a video object")
     if value.get("videoId") and video_id and value["videoId"] != video_id:
         return {"error": "video ID mismatch"}
     if "segments" in value or value.get("videoId"):
         return value
     for video in value.get("videos", []):
+        if not isinstance(video, dict):
+            raise ValueError("Expected an object in videos")
         if video_id is None or video.get("videoId") == video_id:
             return video
     return {}
@@ -139,9 +147,10 @@ def input_records(run_dir):
     return records
 
 
-def input_fingerprint(records):
+def input_fingerprint(records, video_id):
     digest = hashlib.sha256()
     digest.update(Path(__file__).read_bytes())
+    digest.update(json.dumps(video_id).encode())
     for record in sorted(records, key=lambda value: value["file"]):
         digest.update(record["file"].encode())
         digest.update(record["sha256"].encode())
@@ -164,15 +173,23 @@ def normalized_ocr_box(box):
     if not all(type(v) in (int, float) and -1e-6 <= v <= 1 + 1e-6 for v in values):
         return None
     x, y, width, height = values
-    left, top, right, bottom = (round(v, 6) for v in (x, y, x + width, y + height))
-    if 0 <= left < right <= 1 and 0 <= top < bottom <= 1:
+    right, bottom = x + width, y + height
+    if width <= 0 or height <= 0 or right > 1 + 1e-6 or bottom > 1 + 1e-6:
+        return None
+    left, top, right, bottom = (round(min(1, max(0, v)), 6) for v in (x, y, right, bottom))
+    if left < right and top < bottom:
         return {"x": left, "y": top, "width": round(right - left, 6), "height": round(bottom - top, 6)}
     return None
 
 
 def normalized_segments(video, source=None):
     segments = []
-    for segment in video.get("segments", []):
+    raw_segments = video.get("segments", [])
+    if not isinstance(raw_segments, list):
+        raise ValueError("Expected a list of segments")
+    for segment in raw_segments:
+        if not isinstance(segment, dict):
+            raise ValueError("Expected an object in segments")
         text = str(segment.get("text") or "").strip()
         if not text or segment.get("start") is None:
             continue
@@ -184,8 +201,14 @@ def normalized_segments(video, source=None):
             "endSeconds": round(max(start, segment_end(segment)), 3),
             "text": text,
         }
-        if segment.get("confidence") is not None:
-            event["confidence"] = float(segment["confidence"])
+        confidence = segment.get("confidence")
+        if confidence is not None:
+            try:
+                confidence = float(confidence)
+            except (TypeError, ValueError, OverflowError):
+                confidence = None
+            if confidence is not None and math.isfinite(confidence):
+                event["confidence"] = confidence
         if source == "ocr":
             box = normalized_ocr_box(segment.get("boundingBox"))
             if box is not None:
@@ -216,7 +239,7 @@ def build_timeline(run_dir, video_id):
             video = unwrap_video(value, video_id)
             error = video.get("error") or (value.get("error") if isinstance(value, dict) else None)
             segments = normalized_segments(video, source) if not error else []
-        except (ValueError, TypeError, KeyError, IndexError) as exc:
+        except (ValueError, TypeError, KeyError, IndexError, OverflowError) as exc:
             error = f"Invalid track: {exc}"
         if error:
             sources[source] = {
@@ -262,15 +285,15 @@ def build_timeline(run_dir, video_id):
         key=lambda event: (
             event["startSeconds"],
             SOURCE_ORDER[event["source"]],
-            event["endSeconds"],
-            event["text"],
+            # Stable sorting preserves the OCR tool's line order within a frame.
+            () if event["source"] == "ocr" else (event["endSeconds"], event["text"]),
         )
     )
     return {
         "schemaVersion": 1,
         "videoId": video_id,
         "generatedAt": utc_now(),
-        "inputFingerprint": input_fingerprint(records),
+        "inputFingerprint": input_fingerprint(records, video_id),
         "inputs": records,
         "sources": sources,
         "durationSeconds": max(
