@@ -1,7 +1,6 @@
 import Foundation
 import Vision
 
-// ffmpeg의 1번 프레임은 0초이며 파일 번호는 원래 표본 시각을 유지한다.
 let args = CommandLine.arguments
 guard args.count == 5, let fps = Double(args[2]), fps > 0 else {
     fatalError("Usage: ocr.swift FRAMES FPS OUTPUT.jsonl ko-KR,en-US")
@@ -39,6 +38,7 @@ for file in files {
             return ["text": item.string, "confidence": item.confidence,
                     "x": box.minX, "y": 1 - box.maxY, "width": box.width, "height": box.height]
         }
+        // 0초부터 일정한 간격으로 뽑은 JPEG는 파일 번호가 1부터 시작한다.
         let record: [String: Any] = ["time": Double(n - 1) / fps, "frame": file.lastPathComponent, "lines": rows]
         var data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys])
         data.append(10)

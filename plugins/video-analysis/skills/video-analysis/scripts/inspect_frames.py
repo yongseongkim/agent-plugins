@@ -16,11 +16,11 @@ def extract(media, times, question, output):
         raise ValueError("Specify the question the frames should answer")
     times = sorted(set(times))
     output.mkdir(parents=True, exist_ok=True)
-    # Each inspection gets its own directory, including simultaneous and repeated requests.
+    # 같은 구간을 동시에 추출해도 결과가 섞이지 않도록 요청마다 폴더를 만든다.
     with tempfile.TemporaryDirectory(dir=output) as temp:
         directory = Path(temp)
-        # Select the first displayed video frame at or after each time. Two
-        # requests may resolve to one frame in variable-frame-rate content.
+        # 요청한 시각에 프레임이 없으면 그다음 프레임을 쓴다.
+        # 두 요청 시각이 연속된 두 프레임 사이에 있으면 두 요청에 같은 이미지를 쓴다.
         expressions = [f"gte(t,{t})*(isnan(prev_pts)+lt(prev_pts*TB,{t}))" for t in times]
         filters = "select='" + "+".join(expressions) + "',showinfo"
         command = [
@@ -31,8 +31,7 @@ def extract(media, times, question, output):
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode:
             raise ValueError("ffmpeg: " + result.stderr[-1500:])
-        # Derive seconds from integer presentation timestamps, avoiding
-        # showinfo's rounded pts_time for long videos.
+        # 긴 영상에서는 showinfo의 pts_time이 반올림되므로 정수 pts를 초로 환산한다.
         info = [line for line in result.stderr.splitlines() if "Parsed_showinfo_" in line]
         base = re.search(r"config in time_base:\s*(\d+)/(\d+)", "\n".join(info))
         pts = [int(m[1]) for line in info if (m := re.search(r"\bn:\s*\d+\s+pts:\s*(-?\d+)", line))]
