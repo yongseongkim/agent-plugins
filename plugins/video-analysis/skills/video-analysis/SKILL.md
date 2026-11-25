@@ -9,13 +9,15 @@ Use the user's question to set the scope. Cover the whole video for a summary, o
 
 ## Build the timeline
 
-Reuse media, metadata, tracks, and reviews for the same video ID and version. Attempt captions, Whisper, and OCR independently and keep the originals. For missing inputs, see [collection](references/collection.md). Reuse `evidence_timeline.json` when its input fingerprint is current. To rebuild it, set `SKILL` to this skill's absolute path and `RUN` to the video's working directory.
+Reuse media, metadata, tracks, and reviews for the same video ID and version. For a scene question, use chapters and captions to locate candidate times first. Run Whisper for missing speech or inspect images and OCR where the question depends on the screen. For a whole-video summary, cover the full timeline, including silent sections. Collect each needed track independently and keep the originals. See [collection](references/collection.md) for the working directory, inputs, and commands.
+
+Reuse `evidence_timeline.json` when its video ID and input fingerprint match. To rebuild it, set `SKILL` to this skill's absolute path and `RUN` to the video's working directory.
 
 ```sh
 python3 "$SKILL/scripts/video_evidence.py" "$RUN" --video-id "$VIDEO_ID"
 ```
 
-Read each event's source, text, and playback time. Check `sources` for missing, empty, failed, or duplicate tracks.
+Check `sources` for missing, empty, failed, or duplicate tracks. For long timelines, read the relevant time windows in batches. In working notes, group consecutive samples with identical OCR text in the same position. Cite their original event indices and sample times. Keep gaps and layout changes visible.
 `durationSeconds` is the latest end time among the text events, or zero when there are none.
 Compare it with the media duration and inspect gaps when the answer depends on silent action.
 
@@ -41,7 +43,7 @@ Open the images with an image viewer. Compare adjacent frames for motion, sample
 ## Return evidence
 
 For a direct question, give the answer. When the evidence comes from a scene, cite its playback time and link to it when available.
-For reuse, write `analysis.json` in a purpose-specific directory. Each analysis references the shared timeline.
+For reuse, write `analysis.json` in a purpose-specific directory using the [example and field names](references/analysis.json). Each analysis references the shared timeline.
 
 - Include `videoId`, `purpose`, `timelineFingerprint` (the timeline's `inputFingerprint`), and `coverage` (scope, track status, gaps).
 - Each entry in `sections[]` carries `startSeconds`, `endSeconds`, `summary`, and `evidence`. Cite a file and event index, a comment link, or an actual frame time.
