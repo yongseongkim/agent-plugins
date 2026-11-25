@@ -1,24 +1,25 @@
 # 개인 에이전트 플러그인
 
-Codex, Claude Code, Antigravity CLI에서 쓸 수 있는 플러그인을 모았습니다.
-플러그인 하나에 관련 스킬을 묶고, 각 스킬의 지침과 참고 자료는 세 도구가 함께 읽습니다.
+Codex, Claude Code, Antigravity CLI에서 한국어 주석과 개발 문서를 다듬고 영상을 분석할 때 쓰는 플러그인 모음입니다.
+
+## 시스템 구성
+
+```text
+agent-plugins/
+|-- plugins/
+|   |-- korean-dev-prose/   한국어 주석과 개발 문서의 교정 지침
+|   `-- video-analysis/     영상 분석 지침과 전사·OCR·프레임 추출 스크립트
+|-- .agents/plugins/        Codex 플러그인 목록
+`-- .claude-plugin/         Claude Code 플러그인 목록
+```
+
+두 목록은 `plugins/` 아래의 같은 폴더를 가리킵니다.
+Antigravity CLI에서는 사용할 플러그인 폴더를 직접 지정합니다.
 
 | 플러그인 | 언제 쓰나요? | 스킬 |
 | --- | --- | --- |
 | `korean-dev-prose` | 한국어 주석과 개발 문서를 다듬으면서 코드에 드러나지 않는 이유를 보존할 때 | [edit-korean-dev-prose](plugins/korean-dev-prose/skills/edit-korean-dev-prose/SKILL.md) |
 | `video-analysis` | YouTube나 로컬 영상에서 어떤 일이 언제 일어났는지 자막·음성·화면으로 확인할 때 | [video-analysis](plugins/video-analysis/skills/video-analysis/SKILL.md) · [실행 환경](plugins/video-analysis/README.md#실행-환경) |
-
-## 시스템 구성
-
-영상 분석처럼 스크립트가 필요한 스킬은 지침 옆의 `scripts/` 폴더에 실행 파일을 함께 둡니다.
-
-```mermaid
-flowchart LR
-    codex["Codex"] -->|".agents/plugins/marketplace.json에서 선택"| plugin["plugins/ 아래의 플러그인"]
-    claude["Claude Code"] -->|".claude-plugin/marketplace.json에서 선택"| plugin
-    agy["Antigravity CLI"] -->|"로컬 폴더를 직접 지정"| plugin
-    plugin -->|"스킬 지침을 제공"| skill["skills/…/SKILL.md"]
-```
 
 ## 한 번만 참조할 때
 
