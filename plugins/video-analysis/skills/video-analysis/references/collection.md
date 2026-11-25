@@ -33,13 +33,16 @@ ffmpeg -nostdin -n -i "$VIDEO" -vf fps=1:start_time=0:round=up -q:v 3 "$RUN/ocr-
 swift "$SKILL/scripts/ocr.swift" "$RUN/ocr-frames" 1 "$RUN/ocr.jsonl" ko-KR,en-US
 ```
 
-For clips or irregular samples use the original frame times from `inspect_frames.py`. If Vision fails, record the failure and inspect the relevant frames directly. A successful scan may also return no text.
+The numbered-frame OCR command above assumes evenly spaced frames from the start of the video.
+For clips or irregular samples, use each extracted frame's `timeSeconds` from `frames.json` as the OCR record's `time` on the original timeline.
+If Vision fails, record the failure and inspect the relevant frames directly. A successful scan may also return no text.
 
 Other OCR tools can supply JSONL such as `{"time":12.0,"lines":[{"text":"OPEN","confidence":0.92}]}`. Each Vision line also has `x`, `y`, `width`, and `height`, normalized to 0–1 from the top left of the original frame. Timeline OCR events expose these as `boundingBox`. Segment JSON accepts the same box at `segments[].boundingBox`. Text and timing remain usable with missing or invalid coordinates. Check regions separately when signs and captions use different languages. Attribute on-screen writing to OCR.
 
 ## Existing inputs
 
-The timeline builder selects the first available file in each row and preserves the originals.
+The timeline builder reads the first file that exists in each row and preserves the originals.
+If that file cannot be parsed, the track reports an error in `sources`. Check the filename there before correcting an input.
 
 | Track | Input files in order |
 |---|---|

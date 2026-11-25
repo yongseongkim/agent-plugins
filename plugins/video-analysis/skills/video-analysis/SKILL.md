@@ -15,7 +15,9 @@ Reuse media, metadata, tracks, and reviews for the same video ID and version. At
 python3 "$SKILL/scripts/video_evidence.py" "$RUN" --video-id "$VIDEO_ID"
 ```
 
-Read the source, text, and playback time of each event. Check `sources` for missing, empty, failed, or duplicate tracks. Compare the last text event (`durationSeconds`) with the media duration and check gaps for silent action.
+Read each event's source, text, and playback time. Check `sources` for missing, empty, failed, or duplicate tracks.
+`durationSeconds` is the latest end time among the text events, or zero when there are none.
+Compare it with the media duration and inspect gaps when the answer depends on silent action.
 
 ## Interpret scenes
 
@@ -38,7 +40,8 @@ Open the images with an image viewer. Compare adjacent frames for motion, sample
 
 ## Return evidence
 
-For a direct question, give the answer and a timestamped video link when available. For reuse, write `analysis.json` in a purpose-specific directory. Each analysis references the shared timeline.
+For a direct question, give the answer. When the evidence comes from a scene, cite its playback time and link to it when available.
+For reuse, write `analysis.json` in a purpose-specific directory. Each analysis references the shared timeline.
 
 - Include `videoId`, `purpose`, `timelineFingerprint` (the timeline's `inputFingerprint`), and `coverage` (scope, track status, gaps).
 - Each entry in `sections[]` carries `startSeconds`, `endSeconds`, `summary`, and `evidence`. Cite a file and event index, a comment link, or an actual frame time.

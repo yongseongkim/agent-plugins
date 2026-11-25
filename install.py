@@ -27,7 +27,8 @@ def install(root, directories, agents):
     package_files = contents(PACKAGE)
     if Path("SKILL.md") not in package_files:
         raise ValueError(f"Missing skill package at {PACKAGE}")
-    # Several clients can share a directory, including through a project symlink.
+    # 여러 도구가 같은 설치 폴더를 쓸 수 있다.
+    # 심볼릭 링크로 같은 폴더를 가리켜도 한 번만 복사한다.
     targets = list(dict.fromkeys((root / directories[a]).resolve() / PACKAGE.name for a in agents))
     missing = []
     for target in targets:
