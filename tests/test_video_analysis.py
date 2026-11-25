@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "skills/video-analysis/scripts"
+SCRIPTS = Path(__file__).resolve().parents[1] / "plugins/video-analysis/skills/video-analysis/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from inspect_frames import extract

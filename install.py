@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 
-PACKAGE = Path(__file__).resolve().parent / "skills" / "video-analysis"
+PACKAGE = Path(__file__).resolve().parent / "plugins" / "video-analysis" / "skills" / "video-analysis"
 USER_DIRS = {
     "codex": ".agents/skills",
     "claude": ".claude/skills",
